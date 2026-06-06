@@ -69,6 +69,7 @@ expense-flow-backend/
 ├── gradlew.bat
 └── ...
 
+
 ---
 
 ## 🏗️ Architecture
@@ -206,6 +207,8 @@ http://localhost:8080
 
 ---
 
+
+
 ## 🚀 Frontend Setup
 
 ### Navigate to Frontend
@@ -271,6 +274,158 @@ Approved / Rejected
 
 ---
 
+## 📡 API Endpoints
+
+### 1️⃣ Create Expense
+
+**POST** `/api/expenses`
+
+Creates a new expense record.
+
+#### Request Body
+
+```json
+{
+  "expenseDate": "2026-06-07",
+  "category": "Travel",
+  "amount": 5000,
+  "description": "Client meeting travel expense"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": 1,
+  "category": "Travel",
+  "amount": 5000,
+  "status": "DRAFT"
+}
+```
+
+---
+
+### 2️⃣ Get All Expenses
+
+**GET** `/api/expenses`
+
+Retrieves all expenses with pagination.
+
+#### Query Parameters
+
+| Parameter | Default     | Description      |
+| --------- | ----------- | ---------------- |
+| page      | 0           | Page number      |
+| size      | 5           | Records per page |
+| sortBy    | expenseDate | Sort field       |
+
+#### Example
+
+```http
+GET /api/expenses?page=0&size=5&sortBy=expenseDate
+```
+
+---
+
+### 3️⃣ Search Expenses by Category
+
+**GET** `/api/expenses/search`
+
+Searches expenses by category.
+
+#### Query Parameters
+
+| Parameter | Description      |
+| --------- | ---------------- |
+| category  | Expense category |
+| page      | Page number      |
+| size      | Records per page |
+
+#### Example
+
+```http
+GET /api/expenses/search?category=Travel&page=0&size=5
+```
+
+---
+
+### 4️⃣ Filter Expenses by Status
+
+**GET** `/api/expenses/filter`
+
+Filters expenses by status.
+
+#### Query Parameters
+
+| Parameter | Description                          |
+| --------- | ------------------------------------ |
+| status    | DRAFT, SUBMITTED, APPROVED, REJECTED |
+| page      | Page number                          |
+| size      | Records per page                     |
+
+#### Example
+
+```http
+GET /api/expenses/filter?status=APPROVED&page=0&size=5
+```
+
+---
+
+### 5️⃣ Update Expense Status
+
+**PATCH** `/api/expenses/{expenseId}/status`
+
+Updates the status of an expense.
+
+#### Example
+
+```http
+PATCH /api/expenses/1/status?status=APPROVED
+```
+
+#### Available Status Values
+
+* DRAFT
+* SUBMITTED
+* APPROVED
+* REJECTED
+
+---
+
+### 6️⃣ Upload Receipt
+
+**POST** `/api/expenses/{expenseId}/upload`
+
+Uploads a receipt file for an expense.
+
+#### Request Type
+
+```text
+multipart/form-data
+```
+
+#### Example
+
+```http
+POST /api/expenses/1/upload
+```
+
+#### Form Data
+
+| Key  | Type          |
+| ---- | ------------- |
+| file | MultipartFile |
+
+---
+
+## 🔗 Base URL
+
+```text
+http://localhost:8080/api/expenses
+```
+
+
 ## 🔮 Future Enhancements
 
 * User Authentication & Authorization
@@ -288,9 +443,9 @@ Approved / Rejected
 
 Full Stack Developer (React + Spring Boot)
 
-GitHub: https://github.com/your-username
+GitHub: https://github.com/Govardhangoud-mca
 
-LinkedIn: https://linkedin.com/in/your-profile
+LinkedIn: https://www.linkedin.com/in/govardhan-full-stack-developer/
 
 ---
 
