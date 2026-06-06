@@ -1,0 +1,509 @@
+TicketService ============> package com.leapfinance.ticketing.service;
+
+import com.leapfinance.ticketing.entity.Ticket;
+import com.leapfinance.ticketing.entity.User;
+import com.leapfinance.ticketing.repository.TicketRepository;
+import com.leapfinance.ticketing.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+@Service
+public class TicketService {
+
+    private final TicketRepository ticketRepository;
+    private final UserRepository userRepository;
+
+    public TicketService(TicketRepository ticketRepository,
+                         UserRepository userRepository) {
+        this.ticketRepository = ticketRepository;
+        this.userRepository = userRepository;
+    }
+
+    /**
+     * ✅ CREATE TICKET (MULTIPART SUPPORT)
+     */
+    public Ticket createTicket(
+            String title,
+            String description,
+            String priority,
+            MultipartFile file,
+            String userEmail) {
+
+        User owner = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Ticket ticket = new Ticket();
+        ticket.setTitle(title);
+        ticket.setDescription(description);
+        ticket.setPriority(priority);
+        ticket.setStatus("OPEN");
+        ticket.setOwner(owner);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        // 🔹 NOTE:
+        // File handling future lo attachmentService add cheyyachu
+        // ippudu ticket create matrame important
+
+        return savedTicket;
+    }
+
+    /**
+     * Get tickets created by logged-in user
+     */
+    public List<Ticket> getMyTickets(String userEmail) {
+        User owner = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return ticketRepository.findByOwner(owner);
+    }
+
+    /**
+     * Assign ticket to support agent
+     */
+    public Ticket assignTicket(Long ticketId, String agentEmail) {
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        User agent = userRepository.findByEmail(agentEmail)
+                .orElseThrow(() -> new RuntimeException("Agent not found"));
+
+        ticket.setAssignee(agent);
+        ticket.setStatus("IN_PROGRESS");
+
+        return ticketRepository.save(ticket);
+    }
+
+    /**
+     * Update ticket status
+     */
+    public Ticket updateStatus(Long ticketId, String status) {
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        ticket.setStatus(status);
+        return ticketRepository.save(ticket);
+    }
+
+    public List<Ticket> searchByTitle(String title) {
+        return ticketRepository.findByTitleContainingIgnoreCase(title);
+    }
+
+    public List<Ticket> filterByStatus(String status) {
+        return ticketRepository.findByStatus(status);
+    }
+
+    /**
+     * Force close ticket
+     */
+    public Ticket forceCloseTicket(Long ticketId, String status) {
+
+        if (!status.equals("RESOLVED") && !status.equals("CLOSED")) {
+            throw new RuntimeException("Invalid status");
+        }
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        ticket.setStatus(status);
+        return ticketRepository.save(ticket);
+    }
+
+    public List<Ticket> getTicketsByAssignee(String agentEmail) {
+        User agent = userRepository.findByEmail(agentEmail)
+                .orElseThrow(() -> new RuntimeException("Agent not found"));
+
+        return ticketRepository.findByAssignee(agent);
+    }
+
+    public Ticket getTicketById(Long ticketId) {
+        return ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+    }
+
+    public List<Ticket> getAllTickets() {
+        return ticketRepository.findAll();
+    }
+    
+}
+========> Commentservice: package com.leapfinance.ticketing.service;
+
+import com.leapfinance.ticketing.entity.Comment;
+import com.leapfinance.ticketing.entity.Ticket;
+import com.leapfinance.ticketing.repository.CommentRepository;
+import com.leapfinance.ticketing.repository.TicketRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+public class CommentService {
+
+    private final CommentRepository commentRepository;
+    private final TicketRepository ticketRepository;
+
+    public CommentService(CommentRepository commentRepository,
+                          TicketRepository ticketRepository) {
+        this.commentRepository = commentRepository;
+        this.ticketRepository = ticketRepository;
+    }
+
+    /**
+     * Add comment to ticket
+     */
+    public Comment addComment(Long ticketId, String content, String authorEmail) {
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        Comment comment = new Comment();
+        comment.setContent(content);
+        comment.setAuthorEmail(authorEmail);
+        comment.setTicket(ticket);
+        comment.setCreatedAt(LocalDateTime.now());
+
+        return commentRepository.save(comment);
+    }
+
+    /**
+     * Get all comments for a ticket
+     */
+    public List<Comment> getComments(Long ticketId) {
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        return commentRepository.findByTicketOrderByCreatedAtAsc(ticket);
+    }
+}
+
+3 . Application.properties : =======> # ===============================
+# APPLICATION
+# ===============================
+spring.application.name=ticketing-system-backend
+server.port=8080
+
+# ===============================
+# DATABASE (PostgreSQL)
+# ===============================
+spring.datasource.url=jdbc:postgresql://localhost:5432/ticketing_db
+spring.datasource.username=postgres
+spring.datasource.password=0808
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# ===============================
+# JPA / HIBERNATE
+# ===============================
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# ===============================
+# JWT CONFIGURATION
+# ===============================
+jwt.secret=ly0lty5i9hVtx6OoO0THNEkzwkgu6OTu
+jwt.expiration=86400000
+
+# ===============================
+# SPRING SECURITY
+# ===============================
+spring.security.user.name=admin
+spring.security.user.password=admin
+
+# ===============================
+# LOGGING
+# ===============================
+logging.level.org.springframework.security=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+
+# ===============================
+# VALIDATION
+# ===============================
+spring.mvc.throw-exception-if-no-handler-found=true
+spring.web.resources.add-mappings=false
+
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=suragownigovardhangoud2002@gmail.com
+spring.mail.password=Govardhan@2002
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+# Data storing in DB===
+spring.servlet.multipart.enabled=true
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+
+# Email values for the All users 
+
+
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import api from "../../../utils/api";
+import { getRole } from "@/utils/auth";
+import Navbar from "../../../components/Navbar";
+import { Star } from "lucide-react";
+
+export default function UserTicketDetail() {
+  const router = useRouter();
+  const { id } = router.query;
+
+  const [ticket, setTicket] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [content, setContent] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState("");
+
+  const [showSubmitPopup, setShowSubmitPopup] = useState(false);
+
+  useEffect(() => {
+    if (getRole() !== "USER") {
+      router.push("/login");
+      return;
+    }
+    if (id) {
+      fetchTicket();
+      fetchComments();
+      fetchAttachments();
+    }
+  }, [id]);
+
+  const fetchTicket = async () => {
+    try {
+      const res = await api.get("/tickets/my");
+      const myTicket = res.data.find((t: any) => t.id == id);
+      if (!myTicket) return;
+
+      setTicket({
+        ...myTicket,
+        assignedAgentEmail: myTicket.assignee?.email || "Not Assigned",
+      });
+
+      if (myTicket.status === "CLOSED") setShowRating(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      const res = await api.get(`/comments/${id}`);
+      setComments(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      setComments([]);
+    }
+  };
+
+  const fetchAttachments = async () => {
+    try {
+      const res = await api.get(`/attachments/ticket/${id}`);
+      setAttachments(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      setAttachments([]);
+    }
+  };
+
+  const addComment = async () => {
+    if (!content) return;
+    try {
+      await api.post(`/comments/${id}?content=${content}`);
+      setContent("");
+      fetchComments();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const uploadFile = async () => {
+    if (!file) return alert("Select a file first");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      await api.post(`/attachments/${id}`, formData); // ❌ headers remove
+      setFile(null);
+      fetchAttachments();
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+  };
+
+  const submitRating = async () => {
+    if (rating === 0) {
+      alert("Please select rating");
+      return;
+    }
+
+    try {
+      await api.post(`/ratings/${id}`, null, { params: { rating, feedback } });
+      setShowRating(false);
+      alert("Thanks for your feedback!");
+    } catch (err) {
+      console.error(err);
+      alert("Rating submission failed");
+    }
+  };
+
+  const handleSubmitTicket = () => {
+    setShowSubmitPopup(true);
+    setTimeout(() => router.push("/user/dashboard"), 1500);
+  };
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "OPEN":
+        return "bg-blue-500/20 text-blue-400";
+      case "IN_PROGRESS":
+        return "bg-yellow-500/20 text-yellow-400";
+      case "RESOLVED":
+        return "bg-green-500/20 text-green-400";
+      case "CLOSED":
+        return "bg-red-500/20 text-red-400";
+      default:
+        return "bg-gray-500/20 text-gray-400";
+    }
+  };
+
+  if (!ticket) return <p className="text-white p-6">Loading...</p>;
+
+  return (
+    <>
+      <Navbar />
+
+      {showRating && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#030014] rounded-xl p-6 w-full max-w-md border border-white/10">
+            <h3 className="text-xl font-bold mb-4 text-center text-white">
+              Rate Your Support Experience
+            </h3>
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  size={30}
+                  className={`cursor-pointer ${rating >= s ? "text-yellow-400" : "text-gray-500"}`}
+                  onClick={() => setRating(s)}
+                  fill={rating >= s ? "#facc15" : "none"}
+                />
+              ))}
+            </div>
+            <textarea
+              placeholder="Optional feedback"
+              className="w-full border rounded p-2 mb-4 bg-black/20 text-white"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+            />
+            <button
+              onClick={submitRating}
+              className="w-full bg-indigo-600 text-white py-2 rounded"
+            >
+              Submit Rating
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showSubmitPopup && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#030014] px-6 py-4 rounded-lg border border-white/10">
+            <p className="text-green-400 font-semibold">✅ Ticket is submitted</p>
+          </div>
+        </div>
+      )}
+
+      <main className="min-h-screen bg-[#030014] px-6 py-10">
+        <div className="max-w-4xl mx-auto bg-white/5 p-6 rounded-xl border border-white/10">
+          <h2 className="text-3xl font-bold text-white">{ticket.title}</h2>
+          <p className="mt-2 text-gray-300">{ticket.description}</p>
+
+          <div className="flex gap-3 mt-4 items-center">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor(ticket.status)}`}>
+              {ticket.status}
+            </span>
+            <span className="text-sm text-gray-400">
+              Agent: {ticket.assignedAgentEmail}
+            </span>
+          </div>
+
+          <h3 className="text-lg font-semibold text-white mt-6">Attachments</h3>
+          <div className="flex gap-3 mt-2 items-center">
+            <input
+              type="file"
+              className="text-white"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+            <button
+              onClick={uploadFile}
+              className="px-4 py-1 bg-blue-600 text-white rounded"
+            >
+              Upload
+            </button>
+          </div>
+          <ul className="mt-3 space-y-1">
+            {attachments.map((a) => (
+              <li key={a.id}>
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/attachments/${a.id}/download`}
+                  className="text-indigo-400 underline"
+                >
+                  {a.fileName}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="text-lg font-semibold text-white mt-6">Comments</h3>
+          <div className="space-y-3 mt-3">
+            {comments.map((c) => (
+              <div key={c.id} className="bg-black/40 p-3 rounded-lg border border-white/10">
+                <b className="text-gray-400">{c.authorEmail}</b>
+                <p className="mt-1 text-gray-300">{c.content}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <input
+              className="flex-1 bg-black/40 border border-white/10 p-2 rounded text-white"
+              placeholder="Add comment"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+            <button
+              onClick={addComment}
+              className="px-4 py-2 bg-green-600 text-white rounded"
+            >
+              Send
+            </button>
+          </div>
+
+          <button
+            onClick={handleSubmitTicket}
+            className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 text-sm rounded-md"
+          >
+            Submit Ticket
+          </button>
+        </div>
+      </main>
+    </>
+  );
+}
+
+
+
+
+
+
